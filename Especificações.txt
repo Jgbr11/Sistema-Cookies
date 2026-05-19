@@ -1,0 +1,484 @@
+Desenvolva um sistema web completo e robusto para gerenciamento de uma empresa de cookies artesanais, com foco em controle de produção, estoque, receitas, vendas e financeiro. O sistema deve ser moderno, responsivo, intuitivo e totalmente adaptado para dispositivos móveis, pois será utilizado tanto no computador quanto no celular. O projeto deverá ser hospedado na Vercel, utilizando uma stack moderna compatível com deploy serverless.
+
+Objetivo do Sistema
+Criar uma plataforma centralizada para controlar toda a operação da empresa de cookies, desde a compra dos ingredientes até a venda final dos produtos, permitindo controle de custos, estoque, produção, lucro e métricas financeiras.
+
+Requisitos Gerais do Sistema
+Interface moderna e responsiva (mobile-first)
+
+Sistema hospedado na Vercel
+
+Acesso via navegador no celular e computador
+
+Dashboard administrativo
+
+Banco de dados estruturado
+
+Controle de autenticação/login
+
+Navegação simples e intuitiva
+
+Sistema preparado para crescimento futuro
+
+Preferência por arquitetura escalável e organizada
+
+CRUD completo para todas as entidades
+
+Sistema com cálculos automáticos
+
+Atualizações em tempo real sempre que possível
+
+Tecnologias Sugeridas
+Frontend
+Next.js
+
+React
+
+TypeScript
+
+TailwindCSS
+
+Shadcn/UI
+
+Backend
+API Routes do Next.js ou Node.js
+
+Prisma ORM
+
+Banco de Dados
+PostgreSQL (preferencialmente Neon, Supabase ou Railway)
+
+Hospedagem
+Vercel
+
+Autenticação
+NextAuth/Auth.js
+
+Módulos do Sistema
+1. Gestão de Ingredientes
+O sistema deve permitir cadastrar todos os ingredientes utilizados na produção dos cookies.
+
+Informações do ingrediente:
+Nome
+
+Unidade de medida (g, kg, ml, unidade, etc)
+
+Peso/quantidade comprada
+
+Quantidade em estoque
+
+Preço pago
+
+Data da compra
+
+Fornecedor
+
+Validade
+
+Categoria
+
+Exemplo:
+Nome: Farinha de Trigo
+Peso: 5000g
+Quantidade: 1
+Preço: R$ 20,87
+
+Regras:
+O usuário normalmente fará o cadastro mensal das compras
+
+O sistema deve manter histórico de preços
+
+Deve mostrar variação de preço entre compras
+
+Atualizar automaticamente o estoque de ingredientes
+
+Permitir entrada manual de estoque
+
+Alertar ingredientes próximos do vencimento
+
+Alertar ingredientes com estoque baixo
+
+Funcionalidades importantes:
+Histórico de compras
+
+Custo médio do ingrediente
+
+Gráfico de aumento de preços
+
+Consumo médio mensal
+
+Previsão de reposição
+
+2. Gestão de Receitas
+O sistema deve permitir cadastrar receitas completas dos cookies.
+
+Dados da receita:
+Nome do sabor
+
+Ingredientes utilizados
+
+Quantidade de cada ingrediente
+
+Peso final da receita
+
+Quantidade de cookies produzidos
+
+Tempo de preparo
+
+Observações
+
+Exemplo:
+Nome: Cookie de Nutella
+Ingrediente: Farinha
+Quantidade: 510g
+
+Funcionalidades automáticas:
+Calcular custo total da receita
+
+Calcular custo por cookie
+
+Calcular margem de lucro
+
+Calcular rendimento da receita
+
+Mostrar quantas receitas podem ser feitas com o estoque atual
+
+Mostrar ingredientes insuficientes
+
+Simular alterações de custo
+
+Recursos avançados:
+Duplicar receitas
+
+Controle de versões da receita
+
+Ficha técnica automática
+
+Conversão automática de medidas
+
+Simulador de precificação
+
+Percentual de lucro desejado
+
+Sugestão automática de preço de venda
+
+3. Gestão de Estoque
+O estoque será dividido em duas partes:
+
+A) Estoque de Ingredientes
+Controlado automaticamente através:
+
+Cadastro de compras
+
+Consumo nas produções
+
+Funcionalidades:
+Entrada automática
+
+Saída automática conforme produção
+
+Histórico de movimentações
+
+Inventário manual
+
+Ajustes de perdas/desperdícios
+
+B) Estoque de Cookies Produzidos
+Após produzir os cookies, o usuário deve registrar a produção.
+
+Dados da produção:
+Receita utilizada
+
+Quantidade produzida
+
+Data de fabricação
+
+Data de validade
+
+Lote
+
+Responsável
+
+Observações
+
+O sistema deve:
+Gerar lote automaticamente
+
+Controlar validade
+
+Dar baixa no estoque de ingredientes
+
+Atualizar estoque de cookies
+
+Mostrar produtos próximos do vencimento
+
+Mostrar perdas/descarte
+
+Recursos adicionais:
+QR Code do lote
+
+Rastreabilidade
+
+Controle de desperdício
+
+Histórico completo de produção
+
+4. Gestão de Produção
+O sistema deve permitir registrar toda produção realizada.
+
+Funcionalidades:
+Ordem de produção
+
+Registro diário de produção
+
+Controle de produtividade
+
+Histórico por período
+
+Cálculo automático de consumo
+
+Planejamento de produção
+
+Métricas:
+Quantidade produzida por dia
+
+Custos de produção
+
+Lucro por receita
+
+Receita mais vendida
+
+Receita mais lucrativa
+
+5. Gestão de Vendas
+Inicialmente o sistema terá vendas registradas manualmente.
+
+Fluxo da venda:
+Criar venda
+
+Adicionar produtos em formato de carrinho
+
+Selecionar sabor
+
+Selecionar quantidade
+
+Fechar carrinho
+
+Selecionar forma de pagamento
+
+Formas de pagamento:
+Pix
+
+Crédito
+
+Débito
+
+Dinheiro
+
+Regras:
+O tipo de pagamento aparece apenas no fechamento do carrinho
+
+A venda deve reduzir automaticamente o estoque
+
+Registrar horário e data
+
+Permitir cancelar venda
+
+Histórico completo
+
+Funcionalidades importantes:
+Carrinho de vendas
+
+Cálculo automático do total
+
+Registro de descontos
+
+Registro de observações
+
+Ticket médio
+
+Relatórios de vendas
+
+Produtos mais vendidos
+
+Vendas por período
+
+Vendas por forma de pagamento
+
+6. Gestão Financeira
+O sistema deve possuir um módulo financeiro simples, porém robusto.
+
+Entradas:
+Vendas
+
+Receitas extras
+
+Saídas:
+Compra de ingredientes
+
+Embalagens
+
+Despesas gerais
+
+Gás
+
+Energia
+
+Funcionários
+
+Taxas
+
+Funcionalidades:
+Fluxo de caixa
+
+DRE simplificado
+
+Controle de lucro
+
+Relatórios financeiros
+
+Gráficos
+
+Faturamento mensal
+
+Custos operacionais
+
+Lucro líquido
+
+Comparativos mensais
+
+Dashboard financeiro:
+Total vendido no dia
+
+Total vendido no mês
+
+Lucro estimado
+
+Custos
+
+Margem
+
+Produtos mais rentáveis
+
+7. Dashboard Administrativo
+Criar um painel principal com:
+
+Vendas do dia
+
+Produção do dia
+
+Estoque baixo
+
+Produtos vencendo
+
+Lucro mensal
+
+Gráficos
+
+Indicadores principais
+
+Alertas importantes
+
+8. Relatórios
+O sistema deve gerar:
+
+Relatórios de vendas
+
+Relatórios financeiros
+
+Relatórios de estoque
+
+Relatórios de produção
+
+Relatórios de desperdício
+
+Relatórios de lucro
+
+Exportação em PDF e Excel
+
+9. Funcionalidades Extras Recomendadas
+Gestão de Clientes
+Cadastro de clientes
+
+Histórico de compras
+
+Fidelidade
+
+Gestão de Embalagens
+Controle de estoque de embalagens
+
+Custos por embalagem
+
+Agenda de Produção
+Planejamento semanal
+
+Calendário
+
+Notificações
+Estoque baixo
+
+Produtos vencendo
+
+Ingredientes acabando
+
+Backup automático
+Logs do sistema
+Controle de usuários:
+Administrador
+
+Produção
+
+Financeiro
+
+Modo PWA
+Permitir instalar o sistema como aplicativo no celular.
+
+Estrutura Esperada do Banco de Dados
+Criar tabelas relacionadas para:
+
+ingredientes
+
+compras_ingredientes
+
+receitas
+
+receitas_ingredientes
+
+estoque_ingredientes
+
+producoes
+
+estoque_produtos
+
+vendas
+
+venda_itens
+
+financeiro
+
+usuarios
+
+fornecedores
+
+movimentacoes_estoque
+
+Objetivo Final
+O sistema deve permitir:
+
+Saber exatamente quanto custa produzir cada cookie
+
+Saber lucro real
+
+Controlar estoque automaticamente
+
+Evitar desperdícios
+
+Melhorar controle financeiro
+
+Facilitar crescimento da empresa
+
+Ter acesso fácil pelo celular
+
+Centralizar toda operação em um único sistema
+
+O sistema deve ser construído com foco em performance, organização, experiência do usuário e escalabilidade futura.
