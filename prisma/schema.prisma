@@ -1,0 +1,232 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================
+// AUTENTICAÇÃO
+// ============================================
+
+model Usuario {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  senhaHash String   @map("senha_hash")
+  nome      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("usuarios")
+}
+
+// ============================================
+// FORNECEDORES
+// ============================================
+
+model Fornecedor {
+  id        String   @id @default(cuid())
+  nome      String
+  contato   String?
+  telefone  String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  ingredientes Ingrediente[]
+  compras      CompraIngrediente[]
+
+  @@map("fornecedores")
+}
+
+// ============================================
+// INGREDIENTES
+// ============================================
+
+model Ingrediente {
+  id             String   @id @default(cuid())
+  nome           String
+  unidadeMedida  String   @map("unidade_medida")
+  categoria      String
+  estoqueAtual   Float    @default(0) @map("estoque_atual")
+  estoqueMinimo  Float    @default(0) @map("estoque_minimo")
+  fornecedorId   String?  @map("fornecedor_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  fornecedor          Fornecedor?          @relation(fields: [fornecedorId], references: [id])
+  compras             CompraIngrediente[]
+  receitasIngredientes ReceitaIngrediente[]
+  movimentacoes       MovimentacaoEstoque[]
+
+  @@map("ingredientes")
+}
+
+model CompraIngrediente {
+  id             String    @id @default(cuid())
+  ingredienteId  String    @map("ingrediente_id")
+  quantidade     Float
+  pesoComprado   Float     @map("peso_comprado")
+  precoPago      Float     @map("preco_pago")
+  dataCompra     DateTime  @map("data_compra")
+  validade       DateTime?
+  fornecedorId   String?   @map("fornecedor_id")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  ingrediente Ingrediente @relation(fields: [ingredienteId], references: [id], onDelete: Cascade)
+  fornecedor  Fornecedor? @relation(fields: [fornecedorId], references: [id])
+
+  @@map("compras_ingredientes")
+}
+
+// ============================================
+// RECEITAS
+// ============================================
+
+model Receita {
+  id              String   @id @default(cuid())
+  nome            String
+  pesoFinal       Float?   @map("peso_final")
+  qtdCookies      Int      @map("qtd_cookies")
+  tempoPreparo    Int?     @map("tempo_preparo")
+  precoVenda      Float?   @map("preco_venda")
+  margemDesejada  Float?   @map("margem_desejada")
+  observacoes     String?
+  ativa           Boolean  @default(true)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  ingredientes    ReceitaIngrediente[]
+  producoes       Producao[]
+  estoqueProdutos EstoqueProduto[]
+  vendaItens      VendaItem[]
+
+  @@map("receitas")
+}
+
+model ReceitaIngrediente {
+  id             String @id @default(cuid())
+  receitaId      String @map("receita_id")
+  ingredienteId  String @map("ingrediente_id")
+  quantidade     Float
+  unidadeMedida  String @map("unidade_medida")
+
+  receita     Receita     @relation(fields: [receitaId], references: [id], onDelete: Cascade)
+  ingrediente Ingrediente @relation(fields: [ingredienteId], references: [id])
+
+  @@map("receitas_ingredientes")
+}
+
+// ============================================
+// PRODUÇÃO
+// ============================================
+
+model Producao {
+  id             String    @id @default(cuid())
+  receitaId      String    @map("receita_id")
+  qtdProduzida   Int       @map("qtd_produzida")
+  dataFabricacao DateTime  @map("data_fabricacao")
+  dataValidade   DateTime? @map("data_validade")
+  lote           String    @unique
+  responsavel    String?
+  observacoes    String?
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  receita Receita @relation(fields: [receitaId], references: [id])
+
+  @@map("producoes")
+}
+
+// ============================================
+// ESTOQUE DE PRODUTOS (COOKIES)
+// ============================================
+
+model EstoqueProduto {
+  id           String    @id @default(cuid())
+  receitaId    String    @map("receita_id")
+  quantidade   Int
+  lote         String
+  dataValidade DateTime? @map("data_validade")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  receita       Receita               @relation(fields: [receitaId], references: [id])
+  movimentacoes MovimentacaoEstoque[]
+
+  @@map("estoque_produtos")
+}
+
+// ============================================
+// VENDAS
+// ============================================
+
+model Venda {
+  id              String   @id @default(cuid())
+  dataVenda       DateTime @map("data_venda")
+  total           Float
+  desconto        Float    @default(0)
+  formaPagamento  String   @map("forma_pagamento")
+  status          String   @default("CONCLUIDA")
+  observacoes     String?
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  itens VendaItem[]
+
+  @@map("vendas")
+}
+
+model VendaItem {
+  id            String @id @default(cuid())
+  vendaId       String @map("venda_id")
+  receitaId     String @map("receita_id")
+  quantidade    Int
+  precoUnitario Float  @map("preco_unitario")
+  subtotal      Float
+
+  venda   Venda   @relation(fields: [vendaId], references: [id], onDelete: Cascade)
+  receita Receita @relation(fields: [receitaId], references: [id])
+
+  @@map("venda_itens")
+}
+
+// ============================================
+// MOVIMENTAÇÕES DE ESTOQUE
+// ============================================
+
+model MovimentacaoEstoque {
+  id             String    @id @default(cuid())
+  tipo           String    // ENTRADA, SAIDA
+  ingredienteId  String?   @map("ingrediente_id")
+  produtoId      String?   @map("produto_id")
+  quantidade     Float
+  motivo         String    // COMPRA, PRODUCAO, VENDA, AJUSTE, PERDA
+  referenciaId   String?   @map("referencia_id")
+  data           DateTime
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  ingrediente    Ingrediente?    @relation(fields: [ingredienteId], references: [id])
+  produto        EstoqueProduto? @relation(fields: [produtoId], references: [id])
+
+  @@map("movimentacoes_estoque")
+}
+
+// ============================================
+// FINANCEIRO
+// ============================================
+
+model Financeiro {
+  id              String   @id @default(cuid())
+  tipo            String   // ENTRADA, SAIDA
+  categoria       String   // VENDA, INGREDIENTE, EMBALAGEM, GAS, ENERGIA, FUNCIONARIO, TAXA, OUTROS
+  descricao       String
+  valor           Float
+  data            DateTime
+  referenciaId    String?  @map("referencia_id")
+  referenciaTipo  String?  @map("referencia_tipo")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@map("financeiro")
+}
