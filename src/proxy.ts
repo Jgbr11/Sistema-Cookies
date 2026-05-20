@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth"
 import { NextResponse } from "next/server"
 
 /**
- * Middleware de proteção de rotas.
+ * Proxy de proteção de rotas (substituiu middleware.ts no Next.js 16).
  * Redireciona para /login se não autenticado.
  * Permite acesso livre a /login e /api/auth/*.
  */
