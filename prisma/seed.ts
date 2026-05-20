@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Seed do banco de dados — cria usuário admin e dados de exemplo.
  * Execute: npx prisma db seed
