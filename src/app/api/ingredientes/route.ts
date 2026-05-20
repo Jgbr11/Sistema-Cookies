@@ -9,11 +9,11 @@ export async function GET() {
         fornecedor: true,
         compras: {
           orderBy: { dataCompra: "desc" },
-          take: 1,
+          // sem take: 1 — precisamos de todas as compras para custo médio correto
         },
       },
       orderBy: { nome: "asc" },
-    });
+    })
 
     const result = ingredientes.map((ing) => ({
       id: ing.id,
@@ -23,12 +23,13 @@ export async function GET() {
       estoqueAtual: ing.estoqueAtual,
       estoqueMinimo: ing.estoqueMinimo,
       fornecedor: ing.fornecedor,
+      compras: ing.compras,              // array com últimas compras para custo médio
       ultimaCompra: ing.compras[0] ?? null,
       createdAt: ing.createdAt,
       updatedAt: ing.updatedAt,
-    }));
+    }))
 
-    return NextResponse.json(result);
+    return NextResponse.json(result)
   } catch (error) {
     console.error("[GET /api/ingredientes]", error);
     return NextResponse.json(

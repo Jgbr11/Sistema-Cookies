@@ -41,13 +41,20 @@ interface Ingrediente {
   estoqueAtual: number
   estoqueMinimo: number
   fornecedor: Fornecedor | null
-  compras: {
+  compras?: {
     dataCompra: string
     precoPago: number
     pesoComprado: number
     quantidade: number
     validade?: string
   }[]
+  ultimaCompra?: {
+    dataCompra: string
+    precoPago: number
+    pesoComprado: number
+    quantidade: number
+    validade?: string
+  } | null
 }
 
 const CATEGORIAS = [
@@ -254,7 +261,7 @@ export default function IngredientesPage() {
   )
 
   function custoMedio(ing: Ingrediente): number {
-    if (!ing.compras.length) return 0
+    if (!ing.compras?.length) return 0
     const totalGasto = ing.compras.reduce((s, c) => s + c.precoPago, 0)
     const totalPeso = ing.compras.reduce((s, c) => s + c.pesoComprado * c.quantidade, 0)
     return totalPeso > 0 ? totalGasto / totalPeso : 0
