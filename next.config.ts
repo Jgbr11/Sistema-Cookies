@@ -1,16 +1,10 @@
 import type { NextConfig } from "next"
 
 const nextConfig: NextConfig = {
-  // Ignora erros de TypeScript durante o build.
-  // O seed.ts usa @prisma/client sem ter rodado prisma generate antes,
-  // o que causa falso-positivo no type check do Vercel.
-  // Os tipos são verificados localmente via tsc --noEmit.
+  // Ignora erros de TypeScript durante o build do Vercel.
+  // O seed.ts causa falso-positivo porque prisma generate não rodou antes.
   typescript: {
     ignoreBuildErrors: true,
-  },
-  // Ignora erros de ESLint durante o build também
-  eslint: {
-    ignoreDuringBuilds: true,
   },
 }
 
