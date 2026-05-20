@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { Plus, Search, Factory, Cookie, Calendar, User, Pencil } from "lucide-react"
+import { Plus, Search, Factory, Cookie, Calendar, User, Pencil, AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -32,6 +32,13 @@ interface Producao {
   receita: Receita
 }
 
+interface IngredienteFaltando {
+  nome: string
+  necessario: number
+  disponivel: number
+  unidade: string
+}
+
 function ProducaoForm({
   receitas,
   onSave,
@@ -50,12 +57,14 @@ function ProducaoForm({
     observacoes: "",
   })
   const [saving, setSaving] = useState(false)
+  const [faltando, setFaltando] = useState<IngredienteFaltando[]>([])
 
   const receitaSelecionada = receitas.find((r) => r.id === form.receitaId)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
+    setFaltando([])
     try {
       const res = await fetch("/api/producao", {
         method: "POST",
@@ -65,6 +74,13 @@ function ProducaoForm({
           qtdProduzida: Number(form.qtdProduzida),
         }),
       })
+
+      if (res.status === 422) {
+        const err = await res.json()
+        setFaltando(err.faltando ?? [])
+        toast.error("Estoque insuficiente! Veja os ingredientes em falta abaixo.")
+        return
+      }
 
       if (!res.ok) {
         const err = await res.json()
@@ -85,7 +101,13 @@ function ProducaoForm({
       <div className="grid grid-cols-2 gap-4">
         <div className="col-span-2 space-y-1">
           <Label htmlFor="receita-prod">Receita</Label>
-          <Select value={form.receitaId} onValueChange={(v) => setForm({ ...form, receitaId: v || "" })}>
+          <Select
+            value={form.receitaId}
+            onValueChange={(v) => {
+              setForm({ ...form, receitaId: v || "" })
+              setFaltando([])
+            }}
+          >
             <SelectTrigger id="receita-prod">
               <SelectValue placeholder="Selecionar receita..." />
             </SelectTrigger>
@@ -113,7 +135,7 @@ function ProducaoForm({
             type="number"
             min="1"
             value={form.qtdProduzida}
-            onChange={(e) => setForm({ ...form, qtdProduzida: e.target.value })}
+            onChange={(e) => { setForm({ ...form, qtdProduzida: e.target.value }); setFaltando([]) }}
             required
             placeholder="Ex: 48"
           />
@@ -161,6 +183,33 @@ function ProducaoForm({
         </div>
       </div>
 
+      {/* Alerta de estoque insuficiente */}
+      {faltando.length > 0 && (
+        <div className="rounded-xl border border-destructive/40 bg-destructive/5 p-4 space-y-3">
+          <div className="flex items-center gap-2 text-destructive">
+            <AlertTriangle className="w-4 h-4" />
+            <span className="text-sm font-semibold">
+              Estoque insuficiente — {faltando.length} ingrediente(s) em falta
+            </span>
+          </div>
+          <div className="space-y-2">
+            {faltando.map((f, i) => (
+              <div key={i} className="flex items-center justify-between text-sm bg-background/60 rounded-lg px-3 py-2">
+                <span className="font-medium text-foreground">{f.nome}</span>
+                <div className="flex items-center gap-3 text-xs">
+                  <span className="text-muted-foreground">
+                    Necessário: <span className="text-destructive font-semibold">{formatNumber(f.necessario, 1)} {f.unidade}</span>
+                  </span>
+                  <span className="text-muted-foreground">
+                    Disponível: <span className="font-semibold">{formatNumber(f.disponivel, 1)} {f.unidade}</span>
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="p-3 bg-[#0a0a50]/5 rounded-lg text-xs text-muted-foreground">
         ℹ️ Ao registrar a produção, os ingredientes serão descontados do estoque automaticamente.
       </div>
@@ -178,6 +227,7 @@ function ProducaoForm({
 /**
  * Página de Gestão de Produção.
  * Registra produções, gera lotes automáticos e desconta ingredientes do estoque.
+ * Trava registro se estoque de algum ingrediente for insuficiente.
  */
 export default function ProducaoPage() {
   const [producoes, setProducoes] = useState<Producao[]>([])

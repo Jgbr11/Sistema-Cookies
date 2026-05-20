@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import {
   TrendingUp,
   TrendingDown,
@@ -12,6 +12,9 @@ import {
   Clock,
   Cookie,
   BarChart3,
+  CalendarDays,
+  PiggyBank,
+  CreditCard,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -30,10 +33,12 @@ import {
 } from "recharts"
 
 interface DashboardData {
-  vendasHoje: { total: number; quantidade: number }
+  vendasHoje: { total: number; quantidade: number; cookiesVendidos: number }
   vendasMes: { total: number; quantidade: number; variacaoMensal: number }
   producaoHoje: { total: number; lotes: number }
-  lucroEstimado: number
+  producaoMes: { total: number; lotes: number }
+  lucroDasVendas: number
+  lucroTotal: number
   custosMes: number
   margemLucro: number
   alertas: {
@@ -63,21 +68,46 @@ const PAYMENT_LABELS: Record<string, string> = {
   DINHEIRO: "Dinheiro",
 }
 
+// Formata "YYYY-MM" como "Mês/Ano" em pt-BR
+function formatMesAno(mesStr: string): string {
+  const [year, month] = mesStr.split("-")
+  const date = new Date(Number(year), Number(month) - 1, 1)
+  return date.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })
+}
+
+// Retorna o mês atual no formato "YYYY-MM"
+function mesAtual(): string {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+}
+
 /**
  * Dashboard principal — métricas do sistema de cookies.
- * Carrega dados da API /api/dashboard.
+ * Cards de "hoje" são sempre fixos no dia corrente.
+ * Métricas mensais e gráficos respeitam o filtro de mês selecionado.
  */
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [mes, setMes] = useState<string>(mesAtual())
+
+  const carregar = useCallback(async (mesParam: string) => {
+    setLoading(true)
+    try {
+      const url = `/api/dashboard?mes=${mesParam}`
+      const res = await fetch(url)
+      const json = await res.json()
+      setData(json)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
-    fetch("/api/dashboard")
-      .then((res) => res.json())
-      .then(setData)
-      .catch(console.error)
-      .finally(() => setLoading(false))
-  }, [])
+    carregar(mes)
+  }, [carregar, mes])
 
   if (loading) {
     return (
@@ -93,6 +123,13 @@ export default function DashboardPage() {
   const variacao = data?.vendasMes.variacaoMensal ?? 0
   const isPositive = variacao >= 0
 
+  // Dados para o gráfico de sabores vendidos (top produtos)
+  const barData = (data?.topProdutos ?? []).map((tp) => ({
+    name: tp.receita?.nome?.split(" ").slice(0, 2).join(" ") ?? "—",
+    quantidade: tp._sum.quantidade ?? 0,
+    faturamento: tp._sum.subtotal ?? 0,
+  }))
+
   // Dados para o gráfico de pagamentos
   const pieData = (data?.vendasPorPagamento ?? []).map((item) => ({
     name: PAYMENT_LABELS[item.formaPagamento] ?? item.formaPagamento,
@@ -100,120 +137,233 @@ export default function DashboardPage() {
     color: PAYMENT_COLORS[item.formaPagamento] ?? "#6b6b7b",
   }))
 
-  // Dados para o gráfico de top produtos
-  const barData = (data?.topProdutos ?? []).map((tp) => ({
-    name: tp.receita?.nome?.split(" ").slice(0, 2).join(" ") ?? "—",
-    quantidade: tp._sum.quantidade ?? 0,
-    faturamento: tp._sum.subtotal ?? 0,
-  }))
-
   const totalAlertas =
     (data?.alertas.estoqueBaixo.length ?? 0) +
     (data?.alertas.produtosVencendo.length ?? 0) +
     (data?.alertas.ingredientesVencendo.length ?? 0)
 
+  const isMesAtual = mes === mesAtual()
+
   return (
     <div className="space-y-6">
-      {/* Métricas principais */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Vendas hoje */}
-        <Card className="col-span-1">
-          <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Vendas Hoje
-            </CardTitle>
-            <ShoppingCart className="w-4 h-4 text-[#0a0a50]" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-[#0a0a50]">
-              {formatCurrency(data?.vendasHoje.total ?? 0)}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {data?.vendasHoje.quantidade ?? 0} pedido(s)
-            </p>
-          </CardContent>
-        </Card>
 
-        {/* Faturamento mensal */}
-        <Card className="col-span-1">
-          <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Faturamento Mensal
-            </CardTitle>
-            <DollarSign className="w-4 h-4 text-[#22c55e]" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-[#0a0a50]">
-              {formatCurrency(data?.vendasMes.total ?? 0)}
-            </div>
-            <div className="flex items-center gap-1 mt-1">
-              {isPositive ? (
-                <TrendingUp className="w-3 h-3 text-green-500" />
-              ) : (
-                <TrendingDown className="w-3 h-3 text-red-500" />
-              )}
-              <span className={`text-xs ${isPositive ? "text-green-600" : "text-red-500"}`}>
-                {isPositive ? "+" : ""}{variacao.toFixed(1)}% vs mês anterior
-              </span>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Lucro estimado */}
-        <Card className="col-span-1">
-          <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Lucro Estimado
-            </CardTitle>
-            <BarChart3 className="w-4 h-4 text-[#644536]" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-[#0a0a50]">
-              {formatCurrency(data?.lucroEstimado ?? 0)}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Margem: {(data?.margemLucro ?? 0).toFixed(1)}%
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Produção hoje */}
-        <Card className="col-span-1">
-          <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Produção Hoje
-            </CardTitle>
-            <Factory className="w-4 h-4 text-[#8b6f47]" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-[#0a0a50]">
-              {data?.producaoHoje.total ?? 0}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              cookies em {data?.producaoHoje.lotes ?? 0} lote(s)
-            </p>
-          </CardContent>
-        </Card>
+      {/* ── Filtro de mês ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <CalendarDays className="w-4 h-4" />
+          <span>
+            Métricas mensais: <span className="font-medium text-foreground">{formatMesAno(mes)}</span>
+            {isMesAtual && (
+              <Badge variant="secondary" className="ml-2 text-xs">Mês atual</Badge>
+            )}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            id="filtro-mes"
+            type="month"
+            value={mes}
+            max={mesAtual()}
+            onChange={(e) => setMes(e.target.value)}
+            className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+          />
+          {!isMesAtual && (
+            <button
+              onClick={() => setMes(mesAtual())}
+              className="text-xs text-[#0a0a50] underline underline-offset-2 hover:opacity-70"
+            >
+              Voltar ao atual
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Gráficos */}
+      {/* ── Cards fixos: HOJE ── */}
+      <div>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Hoje</p>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Faturamento hoje */}
+          <Card className="col-span-1">
+            <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Faturamento Hoje
+              </CardTitle>
+              <DollarSign className="w-4 h-4 text-[#22c55e]" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-[#0a0a50]">
+                {formatCurrency(data?.vendasHoje.total ?? 0)}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {data?.vendasHoje.quantidade ?? 0} pedido(s)
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Nº de vendas hoje */}
+          <Card className="col-span-1">
+            <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Vendas Hoje
+              </CardTitle>
+              <ShoppingCart className="w-4 h-4 text-[#0a0a50]" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-[#0a0a50]">
+                {data?.vendasHoje.quantidade ?? 0}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                pedido(s)
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Cookies vendidos hoje */}
+          <Card className="col-span-1">
+            <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Cookies Vendidos
+              </CardTitle>
+              <Cookie className="w-4 h-4 text-[#644536]" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-[#0a0a50]">
+                {data?.vendasHoje.cookiesVendidos ?? 0}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                unidades hoje
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Produção hoje */}
+          <Card className="col-span-1">
+            <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Produção Hoje
+              </CardTitle>
+              <Factory className="w-4 h-4 text-[#8b6f47]" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-[#0a0a50]">
+                {data?.producaoHoje.total ?? 0}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                cookies em {data?.producaoHoje.lotes ?? 0} lote(s)
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* ── Cards mensais ── */}
+      <div>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">
+          {isMesAtual ? "Este Mês" : formatMesAno(mes)}
+        </p>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Faturamento mensal */}
+          <Card className="col-span-1">
+            <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Faturamento
+              </CardTitle>
+              <CreditCard className="w-4 h-4 text-[#22c55e]" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-[#0a0a50]">
+                {formatCurrency(data?.vendasMes.total ?? 0)}
+              </div>
+              <div className="flex items-center gap-1 mt-1">
+                {isPositive ? (
+                  <TrendingUp className="w-3 h-3 text-green-500" />
+                ) : (
+                  <TrendingDown className="w-3 h-3 text-red-500" />
+                )}
+                <span className={`text-xs ${isPositive ? "text-green-600" : "text-red-500"}`}>
+                  {isPositive ? "+" : ""}{variacao.toFixed(1)}% vs mês ant.
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Produção mensal */}
+          <Card className="col-span-1">
+            <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Produção
+              </CardTitle>
+              <Factory className="w-4 h-4 text-[#8b6f47]" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-[#0a0a50]">
+                {data?.producaoMes.total ?? 0}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                cookies em {data?.producaoMes.lotes ?? 0} lote(s)
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Lucro das Vendas */}
+          <Card className="col-span-1">
+            <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Lucro das Vendas
+              </CardTitle>
+              <BarChart3 className="w-4 h-4 text-[#644536]" />
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold ${(data?.lucroDasVendas ?? 0) >= 0 ? "text-[#0a0a50]" : "text-destructive"}`}>
+                {formatCurrency(data?.lucroDasVendas ?? 0)}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                fat. − custo ingredientes
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Lucro Total */}
+          <Card className="col-span-1">
+            <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Lucro Total
+              </CardTitle>
+              <PiggyBank className="w-4 h-4 text-[#0a0a50]" />
+            </CardHeader>
+            <CardContent>
+              <div className={`text-2xl font-bold ${(data?.lucroTotal ?? 0) >= 0 ? "text-[#0a0a50]" : "text-destructive"}`}>
+                {formatCurrency(data?.lucroTotal ?? 0)}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                fat. − todos os custos
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* ── Gráficos ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Top produtos */}
+        {/* Gráfico sabores vendidos */}
         {barData.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <Cookie className="w-4 h-4 text-[#644536]" />
-                Top Produtos do Mês
+                Sabores Mais Vendidos
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={200}>
+              <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={barData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                   <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} />
                   <Tooltip
-                    formatter={(value) => [Number(value), "Unidades"]}
+                    formatter={(value, name) => [
+                      Number(value),
+                      name === "quantidade" ? "Unidades" : "Faturamento",
+                    ]}
                     contentStyle={{ fontSize: 12, borderRadius: 8 }}
                   />
                   <Bar dataKey="quantidade" fill="#0a0a50" radius={[4, 4, 0, 0]} />
@@ -223,24 +373,24 @@ export default function DashboardPage() {
           </Card>
         )}
 
-        {/* Vendas por pagamento */}
+        {/* Gráfico formas de pagamento */}
         {pieData.length > 0 && (
           <Card>
             <CardHeader>
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <DollarSign className="w-4 h-4 text-[#644536]" />
-                Formas de Pagamento (Mês)
+                Formas de Pagamento
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={200}>
+              <ResponsiveContainer width="100%" height={220}>
                 <PieChart>
                   <Pie
                     data={pieData}
                     cx="50%"
                     cy="50%"
-                    innerRadius={50}
-                    outerRadius={80}
+                    innerRadius={55}
+                    outerRadius={85}
                     paddingAngle={3}
                     dataKey="value"
                   >
@@ -267,14 +417,14 @@ export default function DashboardPage() {
             <CardContent className="flex flex-col items-center justify-center h-48 text-center">
               <BarChart3 className="w-12 h-12 text-muted-foreground/30 mb-3" />
               <p className="text-muted-foreground text-sm">
-                Registre vendas para ver os gráficos aqui
+                Nenhuma venda registrada em {formatMesAno(mes)}
               </p>
             </CardContent>
           </Card>
         )}
       </div>
 
-      {/* Alertas */}
+      {/* ── Alertas ── */}
       {totalAlertas > 0 && (
         <Card className="border-warning/30 bg-warning/5">
           <CardHeader className="pb-3">

@@ -5,6 +5,7 @@ import { gerarCodigoLote } from "@/lib/calculations"
 /**
  * GET /api/producao — Lista todas as produções com receita.
  * POST /api/producao — Registra nova produção:
+ *   0. Valida se há estoque suficiente de todos os ingredientes (HTTP 422 se não)
  *   1. Gera lote automático
  *   2. Desconta ingredientes do estoque
  *   3. Adiciona ao estoque de produtos
@@ -51,7 +52,52 @@ export async function POST(request: NextRequest) {
     }
 
     // Número de lotes produzidos (qtdProduzida / qtdCookies da receita = lotes)
-    const lotes = Math.ceil(qtdProduzida / receita.qtdCookies)
+    const lotes = Math.ceil(Number(qtdProduzida) / receita.qtdCookies)
+
+    // ─────────────────────────────────────────────
+    // 0. Validar estoque disponível para todos os ingredientes
+    // ─────────────────────────────────────────────
+    if (receita.ingredientes.length > 0) {
+      const ingredienteIds = receita.ingredientes.map((ri) => ri.ingredienteId)
+      const ingredientesDB = await prisma.ingrediente.findMany({
+        where: { id: { in: ingredienteIds } },
+        select: { id: true, nome: true, estoqueAtual: true, unidadeMedida: true },
+      })
+
+      const faltando: { nome: string; necessario: number; disponivel: number; unidade: string }[] = []
+
+      for (const ri of receita.ingredientes) {
+        const consumo = ri.quantidade * lotes
+        const ing = ingredientesDB.find((i) => i.id === ri.ingredienteId)
+        if (!ing) {
+          faltando.push({
+            nome: `Ingrediente desconhecido (${ri.ingredienteId})`,
+            necessario: consumo,
+            disponivel: 0,
+            unidade: ri.unidadeMedida,
+          })
+          continue
+        }
+        if (ing.estoqueAtual < consumo) {
+          faltando.push({
+            nome: ing.nome,
+            necessario: consumo,
+            disponivel: ing.estoqueAtual,
+            unidade: ing.unidadeMedida,
+          })
+        }
+      }
+
+      if (faltando.length > 0) {
+        return NextResponse.json(
+          {
+            error: "Estoque insuficiente",
+            faltando,
+          },
+          { status: 422 }
+        )
+      }
+    }
 
     // Gerar código de lote único
     const today = new Date(dataFabricacao)

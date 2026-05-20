@@ -1,34 +1,57 @@
 import { prisma } from "@/lib/prisma"
-import { NextResponse } from "next/server"
-import { startOfDay, startOfMonth, endOfDay, endOfMonth, subMonths } from "date-fns"
+import { NextRequest, NextResponse } from "next/server"
+import {
+  startOfDay,
+  startOfMonth,
+  endOfDay,
+  endOfMonth,
+  subMonths,
+  parse,
+  isValid,
+} from "date-fns"
 
 /**
  * GET /api/dashboard — Retorna métricas agregadas para o painel principal.
- * Inclui: vendas do dia/mês, produção do dia, estoque baixo, produtos vencendo,
- * lucro estimado, vendas por forma de pagamento, top produtos.
+ * Query param: ?mes=YYYY-MM  (opcional) — filtra métricas mensais para o mês indicado.
+ * Os cards "hoje" são sempre do dia corrente, independente do filtro.
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url)
+    const mesParam = searchParams.get("mes") // "YYYY-MM"
+
     const hoje = new Date()
     const inicioDia = startOfDay(hoje)
     const fimDia = endOfDay(hoje)
-    const inicioMes = startOfMonth(hoje)
-    const fimMes = endOfMonth(hoje)
-    const inicioMesPassado = startOfMonth(subMonths(hoje, 1))
-    const fimMesPassado = endOfMonth(subMonths(hoje, 1))
 
-    // Executar todas as queries em paralelo
+    // Determina o mês de referência para as métricas mensais
+    let mesSelecionado = hoje
+    if (mesParam) {
+      const parsed = parse(mesParam, "yyyy-MM", new Date())
+      if (isValid(parsed)) mesSelecionado = parsed
+    }
+
+    const inicioMes = startOfMonth(mesSelecionado)
+    const fimMes = endOfMonth(mesSelecionado)
+
+    // Mês anterior para variação (sempre relativo ao mês selecionado)
+    const inicioMesPassado = startOfMonth(subMonths(mesSelecionado, 1))
+    const fimMesPassado = endOfMonth(subMonths(mesSelecionado, 1))
+
     const [
       vendasHoje,
+      cookiesHoje,
       vendasMes,
       vendasMesPassado,
       producaoHoje,
+      producaoMes,
       estoqueBaixo,
       produtosVencendo,
       ingredientesVencendo,
       topProdutos,
       vendasPorPagamento,
       financeiroMes,
+      financeiroIngredientesMes,
     ] = await Promise.all([
       // Vendas do dia (só CONCLUIDAS)
       prisma.venda.aggregate({
@@ -40,7 +63,18 @@ export async function GET() {
         _count: { id: true },
       }),
 
-      // Vendas do mês
+      // Cookies vendidos hoje (soma de itens de vendas do dia)
+      prisma.vendaItem.aggregate({
+        where: {
+          venda: {
+            dataVenda: { gte: inicioDia, lte: fimDia },
+            status: "CONCLUIDA",
+          },
+        },
+        _sum: { quantidade: true },
+      }),
+
+      // Vendas do mês selecionado
       prisma.venda.aggregate({
         where: {
           dataVenda: { gte: inicioMes, lte: fimMes },
@@ -50,7 +84,7 @@ export async function GET() {
         _count: { id: true },
       }),
 
-      // Vendas mês passado
+      // Vendas mês anterior
       prisma.venda.aggregate({
         where: {
           dataVenda: { gte: inicioMesPassado, lte: fimMesPassado },
@@ -66,22 +100,22 @@ export async function GET() {
         _count: { id: true },
       }),
 
-      // Ingredientes com estoque baixo
-      prisma.ingrediente.findMany({
-        where: {
-          estoqueAtual: { lte: prisma.ingrediente.fields.estoqueMinimo },
-        },
-        select: { id: true, nome: true, estoqueAtual: true, estoqueMinimo: true, unidadeMedida: true },
-        take: 10,
-      }).catch(() =>
-        // Fallback: busca ingredientes com estoque=0 ou muito baixo
-        prisma.$queryRaw<{ id: string; nome: string; estoque_atual: number; estoque_minimo: number; unidade_medida: string }[]>`
-          SELECT id, nome, estoque_atual, estoque_minimo, unidade_medida
-          FROM ingredientes
-          WHERE estoque_atual <= estoque_minimo
-          LIMIT 10
-        `
-      ),
+      // Produção do mês selecionado
+      prisma.producao.aggregate({
+        where: { dataFabricacao: { gte: inicioMes, lte: fimMes } },
+        _sum: { qtdProduzida: true },
+        _count: { id: true },
+      }),
+
+      // Ingredientes com estoque baixo (raw query como fallback)
+      prisma.$queryRaw<
+        { id: string; nome: string; estoque_atual: number; estoque_minimo: number; unidade_medida: string }[]
+      >`
+        SELECT id, nome, estoque_atual, estoque_minimo, unidade_medida
+        FROM ingredientes
+        WHERE estoque_atual <= estoque_minimo
+        LIMIT 10
+      `,
 
       // Produtos vencendo nos próximos 3 dias
       prisma.estoqueProduto.findMany({
@@ -110,7 +144,7 @@ export async function GET() {
         take: 5,
       }),
 
-      // Top 5 receitas mais vendidas no mês
+      // Top 5 sabores mais vendidos no mês
       prisma.vendaItem.groupBy({
         by: ["receitaId"],
         where: {
@@ -135,11 +169,21 @@ export async function GET() {
         _count: { id: true },
       }),
 
-      // Financeiro do mês (saídas = custos)
+      // Todos os custos do mês (SAIDA) — para Lucro Total
       prisma.financeiro.aggregate({
         where: {
           data: { gte: inicioMes, lte: fimMes },
           tipo: "SAIDA",
+        },
+        _sum: { valor: true },
+      }),
+
+      // Apenas custos com ingredientes do mês — para Lucro das Vendas
+      prisma.financeiro.aggregate({
+        where: {
+          data: { gte: inicioMes, lte: fimMes },
+          tipo: "SAIDA",
+          categoria: "INGREDIENTE",
         },
         _sum: { valor: true },
       }),
@@ -158,33 +202,58 @@ export async function GET() {
     }))
 
     const faturamentoMes = vendasMes._sum.total ?? 0
-    const custosMes = financeiroMes._sum.valor ?? 0
-    const lucroEstimado = faturamentoMes - custosMes
+    const custosTotaisMes = financeiroMes._sum.valor ?? 0
+    const custosIngredientesMes = financeiroIngredientesMes._sum.valor ?? 0
+
+    // Lucro das Vendas = faturamento − custo de ingredientes apenas
+    const lucroDasVendas = faturamentoMes - custosIngredientesMes
+    // Lucro Total = faturamento − todos os custos
+    const lucroTotal = faturamentoMes - custosTotaisMes
+
     const faturamentoMesPassado = vendasMesPassado._sum.total ?? 0
     const variacaoMensal =
       faturamentoMesPassado > 0
         ? ((faturamentoMes - faturamentoMesPassado) / faturamentoMesPassado) * 100
         : 0
 
+    // Normaliza resultado do raw query de estoque baixo
+    const estoqueBaixoNorm = (estoqueBaixo as { id: string; nome: string; estoque_atual: number; estoque_minimo: number; unidade_medida: string }[]).map(
+      (e) => ({
+        id: e.id,
+        nome: e.nome,
+        estoqueAtual: e.estoque_atual,
+        estoqueMinimo: e.estoque_minimo,
+        unidadeMedida: e.unidade_medida,
+      })
+    )
+
     return NextResponse.json({
+      // Cards fixos no dia atual
       vendasHoje: {
         total: vendasHoje._sum.total ?? 0,
         quantidade: vendasHoje._count.id,
-      },
-      vendasMes: {
-        total: faturamentoMes,
-        quantidade: vendasMes._count.id,
-        variacaoMensal,
+        cookiesVendidos: cookiesHoje._sum.quantidade ?? 0,
       },
       producaoHoje: {
         total: producaoHoje._sum.qtdProduzida ?? 0,
         lotes: producaoHoje._count.id,
       },
-      lucroEstimado,
-      custosMes,
-      margemLucro: faturamentoMes > 0 ? (lucroEstimado / faturamentoMes) * 100 : 0,
+      // Métricas do mês selecionado
+      vendasMes: {
+        total: faturamentoMes,
+        quantidade: vendasMes._count.id,
+        variacaoMensal,
+      },
+      producaoMes: {
+        total: producaoMes._sum.qtdProduzida ?? 0,
+        lotes: producaoMes._count.id,
+      },
+      lucroDasVendas,
+      lucroTotal,
+      custosMes: custosTotaisMes,
+      margemLucro: faturamentoMes > 0 ? (lucroTotal / faturamentoMes) * 100 : 0,
       alertas: {
-        estoqueBaixo: Array.isArray(estoqueBaixo) ? estoqueBaixo : [],
+        estoqueBaixo: estoqueBaixoNorm,
         produtosVencendo,
         ingredientesVencendo,
       },

@@ -43,18 +43,17 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { nome, unidadeMedida, categoria, estoqueMinimo, fornecedorId } =
+    const { nome, unidadeMedida, categoria, estoqueMinimo } =
       body as {
         nome: string;
         unidadeMedida: string;
-        categoria: string;
+        categoria?: string;
         estoqueMinimo?: number;
-        fornecedorId?: string;
       };
 
-    if (!nome || !unidadeMedida || !categoria) {
+    if (!nome || !unidadeMedida) {
       return NextResponse.json(
-        { error: "Campos obrigatórios: nome, unidadeMedida, categoria" },
+        { error: "Campos obrigatórios: nome, unidadeMedida" },
         { status: 400 }
       );
     }
@@ -63,9 +62,8 @@ export async function POST(request: NextRequest) {
       data: {
         nome,
         unidadeMedida,
-        categoria,
+        categoria: categoria || "Outros",
         estoqueMinimo: estoqueMinimo ?? 0,
-        ...(fornecedorId ? { fornecedorId } : {}),
       },
       include: { fornecedor: true },
     });
