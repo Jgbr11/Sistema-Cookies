@@ -1,18 +1,18 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
-import { Plus, Search, BookOpen, Clock, DollarSign, Pencil, Trash2, ChevronDown, ChevronUp } from "lucide-react"
+import { Plus, Search, BookOpen, DollarSign, Pencil, Trash2, ChevronDown, ChevronUp, TrendingUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from "sonner"
 import { formatCurrency, formatNumber } from "@/lib/utils"
-import { calcularCustoPorCookie, sugerirPrecoVenda } from "@/lib/calculations"
+import { calcularCustoPorCookie } from "@/lib/calculations"
 
 interface Ingrediente {
   id: string
@@ -43,8 +43,6 @@ interface Receita {
   _count: { producoes: number }
 }
 
-const UNIDADES = ["g", "kg", "ml", "L", "unidade"]
-
 function custoMedioIngrediente(ing: Ingrediente): number {
   if (!ing.compras.length) return 0
   const totalGasto = ing.compras.reduce((s, c) => s + c.precoPago, 0)
@@ -59,6 +57,10 @@ function calcularCustoReceita(ingredientes: ReceitaIngrediente[]): number {
   }, 0)
 }
 
+/**
+ * Formulário de receita com UX de checkboxes para seleção de ingredientes.
+ * Campos removidos: Peso Final, Tempo de Preparo, Margem Desejada.
+ */
 function ReceitaForm({
   receita,
   ingredientesDisponiveis,
@@ -73,28 +75,34 @@ function ReceitaForm({
   const [form, setForm] = useState({
     nome: receita?.nome ?? "",
     qtdCookies: String(receita?.qtdCookies ?? ""),
-    pesoFinal: String(receita?.pesoFinal ?? ""),
-    tempoPreparo: String(receita?.tempoPreparo ?? ""),
     precoVenda: String(receita?.precoVenda ?? ""),
-    margemDesejada: String(receita?.margemDesejada ? (receita.margemDesejada * 100).toFixed(0) : ""),
     observacoes: receita?.observacoes ?? "",
   })
 
-  const [ings, setIngs] = useState<{ ingredienteId: string; quantidade: string; unidadeMedida: string }[]>(
-    receita?.ingredientes?.map((ri) => ({
-      ingredienteId: ri.ingredienteId ?? "",
-      quantidade: String(ri.quantidade ?? 0),
-      unidadeMedida: ri.unidadeMedida ?? "g",
-    })) ?? []
-  )
+  // Mapa: ingredienteId → quantidade selecionada (string para o input)
+  const initialSelected: Record<string, string> = {}
+  receita?.ingredientes?.forEach((ri) => {
+    initialSelected[ri.ingredienteId] = String(ri.quantidade)
+  })
+  const [selecionados, setSelecionados] = useState<Record<string, string>>(initialSelected)
+
   const [saving, setSaving] = useState(false)
+  const [busca, setBusca] = useState("")
 
-  function addIng() {
-    setIngs([...ings, { ingredienteId: "", quantidade: "", unidadeMedida: "g" }])
-  }
+  const ingredientesFiltrados = ingredientesDisponiveis.filter((i) =>
+    i.nome.toLowerCase().includes(busca.toLowerCase())
+  )
 
-  function removeIng(i: number) {
-    setIngs(ings.filter((_, idx) => idx !== i))
+  function toggleIngrediente(id: string, unidade: string) {
+    setSelecionados((prev) => {
+      if (id in prev) {
+        const next = { ...prev }
+        delete next[id]
+        return next
+      }
+      return { ...prev, [id]: "" }
+    })
+    void unidade // usado implicitamente via ingrediente
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -104,20 +112,26 @@ function ReceitaForm({
       const url = receita?.id ? `/api/receitas/${receita.id}` : "/api/receitas"
       const method = receita?.id ? "PUT" : "POST"
 
+      const ingredientesPayload = Object.entries(selecionados)
+        .filter(([, qtd]) => qtd !== "" && Number(qtd) > 0)
+        .map(([ingredienteId, quantidade]) => {
+          const ing = ingredientesDisponiveis.find((i) => i.id === ingredienteId)
+          return {
+            ingredienteId,
+            quantidade: Number(quantidade),
+            unidadeMedida: ing?.unidadeMedida ?? "g",
+          }
+        })
+
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...form,
+          nome: form.nome,
           qtdCookies: Number(form.qtdCookies),
-          pesoFinal: form.pesoFinal ? Number(form.pesoFinal) : null,
-          tempoPreparo: form.tempoPreparo ? Number(form.tempoPreparo) : null,
           precoVenda: form.precoVenda ? Number(form.precoVenda) : null,
-          margemDesejada: form.margemDesejada ? Number(form.margemDesejada) / 100 : null,
-          ingredientes: ings.filter(i => i.ingredienteId).map(i => ({
-            ...i,
-            quantidade: Number(i.quantidade),
-          })),
+          observacoes: form.observacoes || null,
+          ingredientes: ingredientesPayload,
         }),
       })
 
@@ -131,90 +145,129 @@ function ReceitaForm({
     }
   }
 
+  const qtdSelecionados = Object.keys(selecionados).length
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+    <form onSubmit={handleSubmit} className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
       {/* Dados básicos */}
       <div className="grid grid-cols-2 gap-3">
         <div className="col-span-2 space-y-1">
           <Label htmlFor="nome-rec">Nome da Receita</Label>
-          <Input id="nome-rec" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} required placeholder="Ex: Cookie de Nutella" />
+          <Input
+            id="nome-rec"
+            value={form.nome}
+            onChange={(e) => setForm({ ...form, nome: e.target.value })}
+            required
+            placeholder="Ex: Cookie de Nutella"
+          />
         </div>
         <div className="space-y-1">
-          <Label htmlFor="qtd-cookies">Qtd de Cookies</Label>
-          <Input id="qtd-cookies" type="number" min="1" value={form.qtdCookies} onChange={(e) => setForm({ ...form, qtdCookies: e.target.value })} required />
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="peso-final">Peso Final (g)</Label>
-          <Input id="peso-final" type="number" min="0" value={form.pesoFinal} onChange={(e) => setForm({ ...form, pesoFinal: e.target.value })} placeholder="Ex: 800" />
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="tempo-prep">Tempo de Preparo (min)</Label>
-          <Input id="tempo-prep" type="number" min="0" value={form.tempoPreparo} onChange={(e) => setForm({ ...form, tempoPreparo: e.target.value })} />
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="margem">Margem Desejada (%)</Label>
-          <Input id="margem" type="number" min="0" max="99" value={form.margemDesejada} onChange={(e) => setForm({ ...form, margemDesejada: e.target.value })} placeholder="Ex: 40" />
+          <Label htmlFor="qtd-cookies">Qtd de Cookies por Lote</Label>
+          <Input
+            id="qtd-cookies"
+            type="number"
+            min="1"
+            value={form.qtdCookies}
+            onChange={(e) => setForm({ ...form, qtdCookies: e.target.value })}
+            required
+          />
         </div>
         <div className="space-y-1">
           <Label htmlFor="preco-venda">Preço de Venda (R$)</Label>
-          <Input id="preco-venda" type="number" min="0" step="0.01" value={form.precoVenda} onChange={(e) => setForm({ ...form, precoVenda: e.target.value })} placeholder="Ex: 7.50" />
+          <Input
+            id="preco-venda"
+            type="number"
+            min="0"
+            step="0.01"
+            value={form.precoVenda}
+            onChange={(e) => setForm({ ...form, precoVenda: e.target.value })}
+            placeholder="Ex: 7.50"
+          />
         </div>
         <div className="col-span-2 space-y-1">
           <Label htmlFor="obs-rec">Observações</Label>
-          <Textarea id="obs-rec" value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} rows={2} />
+          <Textarea
+            id="obs-rec"
+            value={form.observacoes}
+            onChange={(e) => setForm({ ...form, observacoes: e.target.value })}
+            rows={2}
+          />
         </div>
       </div>
 
-      {/* Ingredientes */}
+      {/* Seleção de ingredientes via checkbox */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label>Ingredientes</Label>
-          <Button type="button" variant="outline" size="sm" onClick={addIng} id="add-ing-rec">
-            <Plus className="w-3.5 h-3.5 mr-1" />
-            Adicionar
-          </Button>
+          <Label>
+            Ingredientes
+            {qtdSelecionados > 0 && (
+              <span className="ml-2 text-xs font-normal text-[#0a0a50] bg-[#0a0a50]/10 px-2 py-0.5 rounded-full">
+                {qtdSelecionados} selecionado(s)
+              </span>
+            )}
+          </Label>
         </div>
-        {ings.length === 0 && (
-          <p className="text-xs text-muted-foreground text-center py-2">
-            Nenhum ingrediente adicionado
+
+        {ingredientesDisponiveis.length === 0 ? (
+          <p className="text-xs text-muted-foreground text-center py-3">
+            Nenhum ingrediente cadastrado. Cadastre ingredientes primeiro.
           </p>
-        )}
-        <div className="space-y-2">
-          {ings.map((ing, i) => (
-            <div key={i} className="flex gap-2 items-center">
-              <Select value={ing.ingredienteId} onValueChange={(v) => setIngs(ings.map((x, idx) => idx === i ? { ...x, ingredienteId: v || "" } : x))}>
-                <SelectTrigger className="flex-1">
-                  <SelectValue placeholder="Ingrediente" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ingredientesDisponiveis.map((id) => (
-                    <SelectItem key={id.id} value={id.id}>{id.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Input
-                type="number"
-                min="0"
-                step="0.1"
-                placeholder="Qtd"
-                value={ing.quantidade}
-                onChange={(e) => setIngs(ings.map((x, idx) => idx === i ? { ...x, quantidade: e.target.value } : x))}
-                className="w-20"
-              />
-              <Select value={ing.unidadeMedida} onValueChange={(v) => setIngs(ings.map((x, idx) => idx === i ? { ...x, unidadeMedida: v || "g" } : x))}>
-                <SelectTrigger className="w-16">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {UNIDADES.map((u) => <SelectItem key={u} value={u}>{u}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeIng(i)} id={`remove-ing-${i}`}>
-                <Trash2 className="w-3.5 h-3.5" />
-              </Button>
+        ) : (
+          <>
+            {/* Busca dentro do modal */}
+            <Input
+              placeholder="Filtrar ingredientes..."
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              className="h-8 text-sm"
+              id="busca-ing-receita"
+            />
+
+            <div className="border rounded-lg divide-y max-h-52 overflow-y-auto">
+              {ingredientesFiltrados.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-3">Nenhum encontrado</p>
+              ) : (
+                ingredientesFiltrados.map((ing) => {
+                  const checked = ing.id in selecionados
+                  return (
+                    <div key={ing.id} className={`flex items-center gap-3 px-3 py-2.5 hover:bg-muted/40 transition-colors ${checked ? "bg-[#0a0a50]/5" : ""}`}>
+                      <Checkbox
+                        id={`ing-check-${ing.id}`}
+                        checked={checked}
+                        onCheckedChange={() => toggleIngrediente(ing.id, ing.unidadeMedida)}
+                      />
+                      <label
+                        htmlFor={`ing-check-${ing.id}`}
+                        className="flex-1 text-sm cursor-pointer select-none flex items-center justify-between"
+                      >
+                        <span className={checked ? "font-medium text-[#0a0a50]" : ""}>{ing.nome}</span>
+                        <span className="text-xs text-muted-foreground">{ing.unidadeMedida}</span>
+                      </label>
+                      {checked && (
+                        <div className="flex items-center gap-1.5">
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.1"
+                            placeholder="Qtd"
+                            value={selecionados[ing.id] ?? ""}
+                            onChange={(e) =>
+                              setSelecionados((prev) => ({ ...prev, [ing.id]: e.target.value }))
+                            }
+                            className="w-20 h-7 text-sm"
+                            id={`qtd-ing-${ing.id}`}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                          <span className="text-xs text-muted-foreground w-8">{ing.unidadeMedida}</span>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })
+              )}
             </div>
-          ))}
-        </div>
+          </>
+        )}
       </div>
 
       <div className="flex gap-2 justify-end pt-2">
@@ -229,7 +282,7 @@ function ReceitaForm({
 
 /**
  * Página de Gestão de Receitas.
- * Lista receitas com cálculo automático de custo e sugestão de preço.
+ * Lista receitas com cálculo automático de custo, lucro por cookie e sugestão de preço.
  */
 export default function ReceitasPage() {
   const [receitas, setReceitas] = useState<Receita[]>([])
@@ -325,9 +378,7 @@ export default function ReceitasPage() {
           {filtradas.map((rec) => {
             const custoTotal = calcularCustoReceita(rec.ingredientes)
             const custoCookie = calcularCustoPorCookie(custoTotal, rec.qtdCookies)
-            const precoSugerido = rec.margemDesejada
-              ? sugerirPrecoVenda(custoCookie, rec.margemDesejada)
-              : null
+            const lucroPorCookie = rec.precoVenda != null ? rec.precoVenda - custoCookie : null
             const expanded = expandidos.has(rec.id)
 
             return (
@@ -345,13 +396,8 @@ export default function ReceitasPage() {
                       </div>
                       <div className="flex flex-wrap gap-3 mt-1">
                         <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <BookOpen className="w-3 h-3" /> {rec.qtdCookies} cookies
+                          <BookOpen className="w-3 h-3" /> {rec.qtdCookies} cookies/lote
                         </span>
-                        {rec.tempoPreparo && (
-                          <span className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Clock className="w-3 h-3" /> {rec.tempoPreparo} min
-                          </span>
-                        )}
                         <span className="text-xs text-muted-foreground">
                           {rec._count.producoes} produção(ões)
                         </span>
@@ -372,8 +418,8 @@ export default function ReceitasPage() {
                 </CardHeader>
 
                 <CardContent className="space-y-2">
-                  {/* Métricas de custo */}
-                  <div className="grid grid-cols-3 gap-3">
+                  {/* Métricas de custo — 4 cards */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div className="text-center p-2 bg-muted/50 rounded-lg">
                       <p className="text-xs text-muted-foreground">Custo Total</p>
                       <p className="text-sm font-semibold text-[#0a0a50]">{formatCurrency(custoTotal)}</p>
@@ -383,16 +429,17 @@ export default function ReceitasPage() {
                       <p className="text-sm font-semibold text-[#0a0a50]">{formatCurrency(custoCookie)}</p>
                     </div>
                     <div className="text-center p-2 bg-muted/50 rounded-lg">
-                      <p className="text-xs text-muted-foreground">
-                        {rec.precoVenda ? "Preço Venda" : "Sugestão Preço"}
-                      </p>
+                      <p className="text-xs text-muted-foreground">Preço de Venda</p>
                       <p className="text-sm font-semibold text-[#644536] flex items-center justify-center gap-1">
                         <DollarSign className="w-3 h-3" />
-                        {rec.precoVenda
-                          ? formatCurrency(rec.precoVenda)
-                          : precoSugerido
-                          ? formatCurrency(precoSugerido)
-                          : "—"}
+                        {rec.precoVenda ? formatCurrency(rec.precoVenda) : "—"}
+                      </p>
+                    </div>
+                    <div className="text-center p-2 rounded-lg bg-green-50 border border-green-100">
+                      <p className="text-xs text-muted-foreground">Lucro/Cookie</p>
+                      <p className={`text-sm font-semibold flex items-center justify-center gap-1 ${lucroPorCookie != null && lucroPorCookie >= 0 ? "text-green-700" : "text-destructive"}`}>
+                        <TrendingUp className="w-3 h-3" />
+                        {lucroPorCookie != null ? formatCurrency(lucroPorCookie) : "—"}
                       </p>
                     </div>
                   </div>
@@ -416,6 +463,14 @@ export default function ReceitasPage() {
                           </div>
                         ))}
                       </div>
+                    </div>
+                  )}
+
+                  {expanded && rec.ingredientes.length === 0 && (
+                    <div className="border-t pt-2 mt-2">
+                      <p className="text-xs text-muted-foreground text-center py-2">
+                        Nenhum ingrediente associado a esta receita.
+                      </p>
                     </div>
                   )}
                 </CardContent>

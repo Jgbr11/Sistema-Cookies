@@ -28,11 +28,6 @@ import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { formatCurrency, formatDate, formatNumber } from "@/lib/utils"
 
-interface Fornecedor {
-  id: string
-  nome: string
-}
-
 interface Ingrediente {
   id: string
   nome: string
@@ -40,7 +35,7 @@ interface Ingrediente {
   categoria: string
   estoqueAtual: number
   estoqueMinimo: number
-  fornecedor: Fornecedor | null
+  fornecedor: { id: string; nome: string } | null
   compras?: {
     dataCompra: string
     precoPago: number
@@ -57,39 +52,24 @@ interface Ingrediente {
   } | null
 }
 
-const CATEGORIAS = [
-  "Farinha",
-  "Açúcar",
-  "Gordura",
-  "Ovo",
-  "Lácteo",
-  "Chocolate",
-  "Frutas",
-  "Aromatizante",
-  "Fermento",
-  "Embalagem",
-  "Outros",
-]
-
 const UNIDADES = ["g", "kg", "ml", "L", "unidade", "caixa", "pacote"]
 
+/**
+ * Formulário simplificado: apenas Nome, Unidade de Medida e Estoque Mínimo.
+ */
 function IngredienteForm({
   ingrediente,
-  fornecedores,
   onSave,
   onCancel,
 }: {
   ingrediente: Partial<Ingrediente> | null
-  fornecedores: Fornecedor[]
   onSave: () => void
   onCancel: () => void
 }) {
   const [form, setForm] = useState({
     nome: ingrediente?.nome ?? "",
     unidadeMedida: ingrediente?.unidadeMedida ?? "g",
-    categoria: ingrediente?.categoria ?? "",
     estoqueMinimo: String(ingrediente?.estoqueMinimo ?? "0"),
-    fornecedorId: ingrediente?.fornecedor?.id ?? "",
   })
   const [saving, setSaving] = useState(false)
 
@@ -106,9 +86,11 @@ function IngredienteForm({
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...form,
+          nome: form.nome,
+          unidadeMedida: form.unidadeMedida,
           estoqueMinimo: Number(form.estoqueMinimo),
-          fornecedorId: form.fornecedorId || null,
+          // categoria com valor padrão para satisfazer o banco
+          categoria: ingrediente?.categoria ?? "Outros",
         }),
       })
 
@@ -124,37 +106,20 @@ function IngredienteForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-1">
+        <Label htmlFor="nome-ing">Nome</Label>
+        <Input
+          id="nome-ing"
+          value={form.nome}
+          onChange={(e) => setForm({ ...form, nome: e.target.value })}
+          placeholder="Ex: Farinha de Trigo"
+          required
+        />
+      </div>
+
       <div className="grid grid-cols-2 gap-4">
-        <div className="col-span-2 space-y-1">
-          <Label htmlFor="nome-ing">Nome</Label>
-          <Input
-            id="nome-ing"
-            value={form.nome}
-            onChange={(e) => setForm({ ...form, nome: e.target.value })}
-            placeholder="Ex: Farinha de Trigo"
-            required
-          />
-        </div>
-
         <div className="space-y-1">
-          <Label htmlFor="categoria-ing">Categoria</Label>
-          <Select
-            value={form.categoria}
-            onValueChange={(v) => setForm({ ...form, categoria: v ?? "" })}
-          >
-            <SelectTrigger id="categoria-ing">
-              <SelectValue placeholder="Categoria" />
-            </SelectTrigger>
-            <SelectContent>
-              {CATEGORIAS.map((cat) => (
-                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-1">
-          <Label htmlFor="unidade-ing">Unidade</Label>
+          <Label htmlFor="unidade-ing">Unidade de Medida</Label>
           <Select
             value={form.unidadeMedida}
             onValueChange={(v) => setForm({ ...form, unidadeMedida: v ?? "g" })}
@@ -181,24 +146,6 @@ function IngredienteForm({
             onChange={(e) => setForm({ ...form, estoqueMinimo: e.target.value })}
           />
         </div>
-
-        <div className="space-y-1">
-          <Label htmlFor="fornecedor-ing">Fornecedor</Label>
-          <Select
-            value={form.fornecedorId}
-            onValueChange={(v) => setForm({ ...form, fornecedorId: v ?? "" })}
-          >
-            <SelectTrigger id="fornecedor-ing">
-              <SelectValue placeholder="Nenhum" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="">Nenhum</SelectItem>
-              {fornecedores.map((f) => (
-                <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
       </div>
 
       <div className="flex gap-2 justify-end pt-2">
@@ -221,7 +168,6 @@ function IngredienteForm({
  */
 export default function IngredientesPage() {
   const [ingredientes, setIngredientes] = useState<Ingrediente[]>([])
-  const [fornecedores, setFornecedores] = useState<Fornecedor[]>([])
   const [loading, setLoading] = useState(true)
   const [busca, setBusca] = useState("")
   const [dialogo, setDialogo] = useState<"criar" | "editar" | null>(null)
@@ -230,12 +176,8 @@ export default function IngredientesPage() {
   const carregar = useCallback(async () => {
     setLoading(true)
     try {
-      const [resIng, resForn] = await Promise.all([
-        fetch("/api/ingredientes"),
-        fetch("/api/fornecedores"),
-      ])
-      setIngredientes(await resIng.json())
-      setFornecedores(await resForn.json())
+      const res = await fetch("/api/ingredientes")
+      setIngredientes(await res.json())
     } finally {
       setLoading(false)
     }
@@ -256,8 +198,7 @@ export default function IngredientesPage() {
   }
 
   const filtrados = ingredientes.filter((ing) =>
-    ing.nome.toLowerCase().includes(busca.toLowerCase()) ||
-    ing.categoria.toLowerCase().includes(busca.toLowerCase())
+    ing.nome.toLowerCase().includes(busca.toLowerCase())
   )
 
   function custoMedio(ing: Ingrediente): number {
@@ -298,7 +239,7 @@ export default function IngredientesPage() {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
           id="busca-ingredientes"
-          placeholder="Buscar por nome ou categoria..."
+          placeholder="Buscar por nome..."
           value={busca}
           onChange={(e) => setBusca(e.target.value)}
           className="pl-9"
@@ -333,7 +274,7 @@ export default function IngredientesPage() {
           {filtrados.map((ing) => {
             const baixo = ing.estoqueAtual <= ing.estoqueMinimo
             const custoPorUnidade = custoMedio(ing)
-            const ultimaCompra = ing.compras[0]
+            const ultimaCompra = ing.compras?.[0]
 
             return (
               <Card
@@ -351,11 +292,8 @@ export default function IngredientesPage() {
                       </CardTitle>
                       <div className="flex items-center gap-2 mt-1">
                         <Badge variant="secondary" className="text-xs">
-                          {ing.categoria}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground">
                           {ing.unidadeMedida}
-                        </span>
+                        </Badge>
                       </div>
                     </div>
                     <div className="flex gap-1 flex-shrink-0">
@@ -400,6 +338,14 @@ export default function IngredientesPage() {
                     </div>
                   </div>
 
+                  {/* Estoque mínimo */}
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">Mínimo</span>
+                    <span className="text-xs text-muted-foreground">
+                      {formatNumber(ing.estoqueMinimo, 0)} {ing.unidadeMedida}
+                    </span>
+                  </div>
+
                   {/* Custo médio */}
                   {custoPorUnidade > 0 && (
                     <div className="flex items-center justify-between">
@@ -417,12 +363,7 @@ export default function IngredientesPage() {
                     </div>
                   )}
 
-                  {/* Fornecedor e última compra */}
-                  {ing.fornecedor && (
-                    <div className="text-xs text-muted-foreground truncate">
-                      Fornecedor: <span className="text-foreground">{ing.fornecedor.nome}</span>
-                    </div>
-                  )}
+                  {/* Última compra */}
                   {ultimaCompra && (
                     <div className="text-xs text-muted-foreground">
                       Última compra: <span className="text-foreground">{formatDate(ultimaCompra.dataCompra)}</span>
@@ -438,7 +379,7 @@ export default function IngredientesPage() {
 
       {/* Dialog criar/editar */}
       <Dialog open={dialogo !== null} onOpenChange={(open) => !open && setDialogo(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>
               {dialogo === "editar" ? `Editar: ${selecionado?.nome}` : "Novo Ingrediente"}
@@ -446,7 +387,6 @@ export default function IngredientesPage() {
           </DialogHeader>
           <IngredienteForm
             ingrediente={selecionado}
-            fornecedores={fornecedores}
             onSave={() => { setDialogo(null); carregar() }}
             onCancel={() => setDialogo(null)}
           />
