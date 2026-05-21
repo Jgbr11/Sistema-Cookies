@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma"
  * Autenticação simples com email/senha para login único de administrador.
  */
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
   providers: [
     Credentials({
       name: "credentials",
