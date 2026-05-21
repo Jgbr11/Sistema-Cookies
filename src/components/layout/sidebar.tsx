@@ -9,9 +9,10 @@ import { useState } from "react"
 
 /**
  * Sidebar principal do sistema.
- * - Desktop: fixa à esquerda (240px expandida, 72px colapsada)
+ * - Desktop: fixa à esquerda (260px expandida, 80px colapsada)
  * - Navy (#0a0a50) com texto creme (#eff7cf)
  * - Active state com marrom terroso (#644536)
+ * - Design arredondado e artesanal
  */
 export function Sidebar() {
   const pathname = usePathname()
@@ -20,21 +21,21 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "hidden lg:flex flex-col h-screen bg-[#0a0a50] text-[#eff7cf] transition-all duration-300 ease-in-out fixed left-0 top-0 z-40",
-        collapsed ? "w-[72px]" : "w-[240px]"
+        "hidden lg:flex flex-col h-screen bg-gradient-to-b from-[#0a0a50] to-[#08083e] text-[#eff7cf] transition-all duration-300 ease-in-out fixed left-0 top-0 z-40",
+        collapsed ? "w-[80px]" : "w-[260px]"
       )}
     >
       {/* Logo / Brand */}
-      <div className="flex items-center gap-3 px-4 h-16 border-b border-[#1a1a6a]">
-        <div className="w-10 h-10 rounded-full bg-[#644536] flex items-center justify-center flex-shrink-0">
-          <Cookie className="w-5 h-5 text-[#eff7cf]" />
+      <div className="flex items-center gap-3 px-5 h-[72px] border-b border-white/10">
+        <div className="w-11 h-11 rounded-2xl bg-[#644536] flex items-center justify-center flex-shrink-0 shadow-lg shadow-[#644536]/30">
+          <Cookie className="w-6 h-6 text-[#eff7cf]" />
         </div>
         {!collapsed && (
           <div className="overflow-hidden">
-            <h1 className="text-lg font-bold whitespace-nowrap">
+            <h1 className="text-lg font-extrabold whitespace-nowrap tracking-tight">
               Cookies
             </h1>
-            <p className="text-xs text-[#eff7cf]/60 whitespace-nowrap">
+            <p className="text-[11px] text-[#eff7cf]/50 whitespace-nowrap font-medium">
               Gestão Artesanal
             </p>
           </div>
@@ -42,7 +43,7 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
+      <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
         {navItems.map((item) => {
           const isActive =
             item.href === "/"
@@ -54,22 +55,22 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group",
+                "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group",
                 isActive
-                  ? "bg-[#644536] text-[#eff7cf] shadow-md"
-                  : "text-[#eff7cf]/70 hover:bg-[#1a1a6a] hover:text-[#eff7cf]"
+                  ? "bg-[#644536] text-[#eff7cf] shadow-lg shadow-[#644536]/40"
+                  : "text-[#eff7cf]/60 hover:bg-white/8 hover:text-[#eff7cf]"
               )}
             >
               <item.icon
                 className={cn(
-                  "w-5 h-5 flex-shrink-0",
+                  "w-5 h-5 flex-shrink-0 transition-transform duration-200",
                   isActive
                     ? "text-[#eff7cf]"
-                    : "text-[#eff7cf]/50 group-hover:text-[#eff7cf]"
+                    : "text-[#eff7cf]/40 group-hover:text-[#eff7cf] group-hover:scale-110"
                 )}
               />
               {!collapsed && (
-                <span className="text-sm font-medium whitespace-nowrap">
+                <span className="text-sm font-semibold whitespace-nowrap">
                   {item.label}
                 </span>
               )}
@@ -79,17 +80,17 @@ export function Sidebar() {
       </nav>
 
       {/* Collapse button */}
-      <div className="px-2 py-3 border-t border-[#1a1a6a]">
+      <div className="px-3 py-4 border-t border-white/10">
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-[#eff7cf]/50 hover:bg-[#1a1a6a] hover:text-[#eff7cf] transition-all duration-200 cursor-pointer"
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-[#eff7cf]/40 hover:bg-white/8 hover:text-[#eff7cf] transition-all duration-200 cursor-pointer"
         >
           {collapsed ? (
             <ChevronRight className="w-5 h-5" />
           ) : (
             <>
               <ChevronLeft className="w-5 h-5" />
-              <span className="text-sm">Recolher</span>
+              <span className="text-sm font-medium">Recolher</span>
             </>
           )}
         </button>

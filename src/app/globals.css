@@ -53,7 +53,7 @@
 }
 
 /* ==============================================
-   SISTEMA COOKIES - PALETA ARTESANAL
+   SISTEMA COOKIES — PALETA ARTESANAL
    Primary:   #0a0a50 (Azul Marinho)
    Secondary: #eff7cf (Creme Suave)  
    Accent:    #644536 (Marrom Terroso)
@@ -61,7 +61,7 @@
 
 :root {
   /* Core backgrounds */
-  --background: #fafaf5;
+  --background: #faf9f6;
   --foreground: #1a1a2e;
 
   /* Cards */
@@ -100,8 +100,8 @@
   --warning-foreground: #1a1a2e;
 
   /* Borders & Inputs */
-  --border: #e2dfd6;
-  --input: #e2dfd6;
+  --border: #e8e4da;
+  --input: #e8e4da;
   --ring: #0a0a50;
 
   /* Charts - Paleta harmônica */
@@ -111,7 +111,15 @@
   --chart-4: #a8c686;
   --chart-5: #d4a574;
 
-  --radius: 0.625rem;
+  /* ===== REDESIGN: radius & shadows artesanais ===== */
+  --radius: 1rem;
+
+  /* Sombras artesanais suaves e difusas */
+  --shadow-card: 0 2px 12px -2px rgba(100, 69, 54, 0.08), 0 1px 4px -1px rgba(100, 69, 54, 0.05);
+  --shadow-card-hover: 0 8px 28px -4px rgba(100, 69, 54, 0.14), 0 4px 10px -2px rgba(100, 69, 54, 0.06);
+  --shadow-button: 0 2px 8px -2px rgba(10, 10, 80, 0.15);
+  --shadow-button-hover: 0 6px 20px -4px rgba(10, 10, 80, 0.2);
+  --shadow-glow-accent: 0 0 20px -4px rgba(100, 69, 54, 0.3);
 
   /* Sidebar - Azul Marinho profundo */
   --sidebar: #0a0a50;
@@ -130,6 +138,10 @@
   }
   body {
     @apply bg-background text-foreground;
+    background-image: 
+      radial-gradient(ellipse at 0% 0%, rgba(239, 247, 207, 0.15) 0%, transparent 60%),
+      radial-gradient(ellipse at 100% 100%, rgba(100, 69, 54, 0.04) 0%, transparent 60%);
+    background-attachment: fixed;
   }
   html {
     @apply font-sans scroll-smooth;
@@ -141,4 +153,107 @@
   .transition-default {
     @apply transition-all duration-200 ease-in-out;
   }
+
+  /* Hover lift effect para cards e elementos interativos */
+  .hover-lift {
+    @apply transition-all duration-300 ease-out;
+  }
+  .hover-lift:hover {
+    transform: translateY(-2px);
+  }
+
+  /* Glow sutil para active states */
+  .glow-accent {
+    box-shadow: var(--shadow-glow-accent);
+  }
+
+  /* Section headings com barra lateral decorativa */
+  .section-heading {
+    @apply text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2;
+  }
+  .section-heading::before {
+    content: '';
+    @apply w-1 h-4 rounded-full bg-accent inline-block;
+  }
+
+  /* Icon circle para dashboard cards */
+  .icon-circle {
+    @apply w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0;
+  }
+  .icon-circle-sm {
+    @apply w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0;
+  }
+}
+
+/* Scrollbar customizada */
+@layer base {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(100, 69, 54, 0.2) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    background-color: rgba(100, 69, 54, 0.2);
+    border-radius: 9999px;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(100, 69, 54, 0.35);
+  }
+}
+
+/* Animações artesanais */
+@keyframes float-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes soft-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-float-in {
+  animation: float-in 0.4s ease-out both;
+}
+
+.animate-soft-pulse {
+  animation: soft-pulse 2s ease-in-out infinite;
+}
+
+/* Skeleton loader arredondado */
+.skeleton {
+  @apply rounded-2xl bg-muted;
+  background: linear-gradient(
+    90deg,
+    var(--muted) 25%,
+    rgba(239, 247, 207, 0.3) 50%,
+    var(--muted) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
 }

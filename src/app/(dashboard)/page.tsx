@@ -112,9 +112,11 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="flex flex-col items-center gap-3">
-          <Cookie className="w-10 h-10 text-[#644536] animate-bounce" />
-          <p className="text-muted-foreground text-sm">Carregando métricas...</p>
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-16 h-16 rounded-2xl bg-accent/10 flex items-center justify-center">
+            <Cookie className="w-8 h-8 text-accent animate-bounce" />
+          </div>
+          <p className="text-muted-foreground text-sm font-medium">Carregando métricas...</p>
         </div>
       </div>
     )
@@ -145,14 +147,16 @@ export default function DashboardPage() {
   const isMesAtual = mes === mesAtual()
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
 
       {/* ── Filtro de mês ── */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <CalendarDays className="w-4 h-4" />
+        <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+          <div className="icon-circle-sm bg-primary/10">
+            <CalendarDays className="w-4 h-4 text-primary" />
+          </div>
           <span>
-            Métricas mensais: <span className="font-medium text-foreground">{formatMesAno(mes)}</span>
+            Métricas mensais: <span className="font-bold text-foreground">{formatMesAno(mes)}</span>
             {isMesAtual && (
               <Badge variant="secondary" className="ml-2 text-xs">Mês atual</Badge>
             )}
@@ -165,12 +169,12 @@ export default function DashboardPage() {
             value={mes}
             max={mesAtual()}
             onChange={(e) => setMes(e.target.value)}
-            className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-ring"
+            className="h-10 rounded-xl border border-input bg-muted/20 px-3.5 py-1 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring transition-all duration-200"
           />
           {!isMesAtual && (
             <button
               onClick={() => setMes(mesAtual())}
-              className="text-xs text-[#0a0a50] underline underline-offset-2 hover:opacity-70"
+              className="text-xs font-semibold text-primary underline underline-offset-2 hover:opacity-70 transition-opacity"
             >
               Voltar ao atual
             </button>
@@ -180,75 +184,83 @@ export default function DashboardPage() {
 
       {/* ── Cards fixos: HOJE ── */}
       <div>
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">Hoje</p>
+        <p className="section-heading mb-4">Hoje</p>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Faturamento hoje */}
-          <Card className="col-span-1">
+          <Card className="col-span-1 hover-lift">
             <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 Faturamento Hoje
               </CardTitle>
-              <DollarSign className="w-4 h-4 text-[#22c55e]" />
+              <div className="icon-circle-sm bg-success/10">
+                <DollarSign className="w-4 h-4 text-success" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-[#0a0a50]">
+              <div className="text-2xl font-extrabold text-primary">
                 {formatCurrency(data?.vendasHoje.total ?? 0)}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1.5 font-medium">
                 {data?.vendasHoje.quantidade ?? 0} pedido(s)
               </p>
             </CardContent>
           </Card>
 
           {/* Nº de vendas hoje */}
-          <Card className="col-span-1">
+          <Card className="col-span-1 hover-lift">
             <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 Vendas Hoje
               </CardTitle>
-              <ShoppingCart className="w-4 h-4 text-[#0a0a50]" />
+              <div className="icon-circle-sm bg-primary/10">
+                <ShoppingCart className="w-4 h-4 text-primary" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-[#0a0a50]">
+              <div className="text-2xl font-extrabold text-primary">
                 {data?.vendasHoje.quantidade ?? 0}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1.5 font-medium">
                 pedido(s)
               </p>
             </CardContent>
           </Card>
 
           {/* Cookies vendidos hoje */}
-          <Card className="col-span-1">
+          <Card className="col-span-1 hover-lift">
             <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 Cookies Vendidos
               </CardTitle>
-              <Cookie className="w-4 h-4 text-[#644536]" />
+              <div className="icon-circle-sm bg-accent/10">
+                <Cookie className="w-4 h-4 text-accent" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-[#0a0a50]">
+              <div className="text-2xl font-extrabold text-primary">
                 {data?.vendasHoje.cookiesVendidos ?? 0}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1.5 font-medium">
                 unidades hoje
               </p>
             </CardContent>
           </Card>
 
           {/* Produção hoje */}
-          <Card className="col-span-1">
+          <Card className="col-span-1 hover-lift">
             <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 Produção Hoje
               </CardTitle>
-              <Factory className="w-4 h-4 text-[#8b6f47]" />
+              <div className="icon-circle-sm bg-[#8b6f47]/10">
+                <Factory className="w-4 h-4 text-[#8b6f47]" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-[#0a0a50]">
+              <div className="text-2xl font-extrabold text-primary">
                 {data?.producaoHoje.total ?? 0}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1.5 font-medium">
                 cookies em {data?.producaoHoje.lotes ?? 0} lote(s)
               </p>
             </CardContent>
@@ -258,84 +270,100 @@ export default function DashboardPage() {
 
       {/* ── Cards mensais ── */}
       <div>
-        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-widest mb-3">
+        <p className="section-heading mb-4">
           {isMesAtual ? "Este Mês" : formatMesAno(mes)}
         </p>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Faturamento mensal */}
-          <Card className="col-span-1">
+          <Card className="col-span-1 hover-lift">
             <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 Faturamento
               </CardTitle>
-              <CreditCard className="w-4 h-4 text-[#22c55e]" />
+              <div className="icon-circle-sm bg-success/10">
+                <CreditCard className="w-4 h-4 text-success" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-[#0a0a50]">
+              <div className="text-2xl font-extrabold text-primary">
                 {formatCurrency(data?.vendasMes.total ?? 0)}
               </div>
-              <div className="flex items-center gap-1 mt-1">
+              <div className="flex items-center gap-1.5 mt-1.5">
                 {isPositive ? (
-                  <TrendingUp className="w-3 h-3 text-green-500" />
+                  <div className="flex items-center gap-1 bg-success/10 text-success px-2 py-0.5 rounded-full">
+                    <TrendingUp className="w-3 h-3" />
+                    <span className="text-xs font-bold">
+                      +{variacao.toFixed(1)}%
+                    </span>
+                  </div>
                 ) : (
-                  <TrendingDown className="w-3 h-3 text-red-500" />
+                  <div className="flex items-center gap-1 bg-destructive/10 text-destructive px-2 py-0.5 rounded-full">
+                    <TrendingDown className="w-3 h-3" />
+                    <span className="text-xs font-bold">
+                      {variacao.toFixed(1)}%
+                    </span>
+                  </div>
                 )}
-                <span className={`text-xs ${isPositive ? "text-green-600" : "text-red-500"}`}>
-                  {isPositive ? "+" : ""}{variacao.toFixed(1)}% vs mês ant.
-                </span>
+                <span className="text-xs text-muted-foreground">vs mês ant.</span>
               </div>
             </CardContent>
           </Card>
 
           {/* Produção mensal */}
-          <Card className="col-span-1">
+          <Card className="col-span-1 hover-lift">
             <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 Produção
               </CardTitle>
-              <Factory className="w-4 h-4 text-[#8b6f47]" />
+              <div className="icon-circle-sm bg-[#8b6f47]/10">
+                <Factory className="w-4 h-4 text-[#8b6f47]" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-[#0a0a50]">
+              <div className="text-2xl font-extrabold text-primary">
                 {data?.producaoMes.total ?? 0}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1.5 font-medium">
                 cookies em {data?.producaoMes.lotes ?? 0} lote(s)
               </p>
             </CardContent>
           </Card>
 
           {/* Lucro das Vendas */}
-          <Card className="col-span-1">
+          <Card className="col-span-1 hover-lift">
             <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 Lucro das Vendas
               </CardTitle>
-              <BarChart3 className="w-4 h-4 text-[#644536]" />
+              <div className="icon-circle-sm bg-accent/10">
+                <BarChart3 className="w-4 h-4 text-accent" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className={`text-2xl font-bold ${(data?.lucroDasVendas ?? 0) >= 0 ? "text-[#0a0a50]" : "text-destructive"}`}>
+              <div className={`text-2xl font-extrabold ${(data?.lucroDasVendas ?? 0) >= 0 ? "text-primary" : "text-destructive"}`}>
                 {formatCurrency(data?.lucroDasVendas ?? 0)}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1.5 font-medium">
                 fat. − custo ingredientes
               </p>
             </CardContent>
           </Card>
 
           {/* Lucro Total */}
-          <Card className="col-span-1">
+          <Card className="col-span-1 hover-lift">
             <CardHeader className="pb-2 flex-row items-center justify-between space-y-0">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 Lucro Total
               </CardTitle>
-              <PiggyBank className="w-4 h-4 text-[#0a0a50]" />
+              <div className="icon-circle-sm bg-primary/10">
+                <PiggyBank className="w-4 h-4 text-primary" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className={`text-2xl font-bold ${(data?.lucroTotal ?? 0) >= 0 ? "text-[#0a0a50]" : "text-destructive"}`}>
+              <div className={`text-2xl font-extrabold ${(data?.lucroTotal ?? 0) >= 0 ? "text-primary" : "text-destructive"}`}>
                 {formatCurrency(data?.lucroTotal ?? 0)}
               </div>
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-xs text-muted-foreground mt-1.5 font-medium">
                 fat. − todos os custos
               </p>
             </CardContent>
@@ -344,13 +372,15 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Gráficos ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
         {/* Gráfico sabores vendidos */}
         {barData.length > 0 && (
-          <Card>
+          <Card className="hover-lift">
             <CardHeader>
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Cookie className="w-4 h-4 text-[#644536]" />
+              <CardTitle className="text-sm font-semibold flex items-center gap-2.5">
+                <div className="icon-circle-sm bg-accent/10">
+                  <Cookie className="w-4 h-4 text-accent" />
+                </div>
                 Sabores Mais Vendidos
               </CardTitle>
             </CardHeader>
@@ -364,9 +394,9 @@ export default function DashboardPage() {
                       Number(value),
                       name === "quantidade" ? "Unidades" : "Faturamento",
                     ]}
-                    contentStyle={{ fontSize: 12, borderRadius: 8 }}
+                    contentStyle={{ fontSize: 12, borderRadius: 16, border: 'none', boxShadow: '0 4px 20px -4px rgba(0,0,0,0.1)' }}
                   />
-                  <Bar dataKey="quantidade" fill="#0a0a50" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="quantidade" fill="#0a0a50" radius={[8, 8, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </CardContent>
@@ -375,10 +405,12 @@ export default function DashboardPage() {
 
         {/* Gráfico formas de pagamento */}
         {pieData.length > 0 && (
-          <Card>
+          <Card className="hover-lift">
             <CardHeader>
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <DollarSign className="w-4 h-4 text-[#644536]" />
+              <CardTitle className="text-sm font-semibold flex items-center gap-2.5">
+                <div className="icon-circle-sm bg-success/10">
+                  <DollarSign className="w-4 h-4 text-success" />
+                </div>
                 Formas de Pagamento
               </CardTitle>
             </CardHeader>
@@ -391,19 +423,20 @@ export default function DashboardPage() {
                     cy="50%"
                     innerRadius={55}
                     outerRadius={85}
-                    paddingAngle={3}
+                    paddingAngle={4}
                     dataKey="value"
+                    strokeWidth={0}
                   >
                     {pieData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
                   <Legend
-                    formatter={(value) => <span style={{ fontSize: 12 }}>{value}</span>}
+                    formatter={(value) => <span style={{ fontSize: 12, fontWeight: 600 }}>{value}</span>}
                   />
                   <Tooltip
                     formatter={(value) => [formatCurrency(Number(value)), "Total"]}
-                    contentStyle={{ fontSize: 12, borderRadius: 8 }}
+                    contentStyle={{ fontSize: 12, borderRadius: 16, border: 'none', boxShadow: '0 4px 20px -4px rgba(0,0,0,0.1)' }}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -415,8 +448,10 @@ export default function DashboardPage() {
         {barData.length === 0 && pieData.length === 0 && (
           <Card className="lg:col-span-2">
             <CardContent className="flex flex-col items-center justify-center h-48 text-center">
-              <BarChart3 className="w-12 h-12 text-muted-foreground/30 mb-3" />
-              <p className="text-muted-foreground text-sm">
+              <div className="icon-circle bg-muted mb-3">
+                <BarChart3 className="w-6 h-6 text-muted-foreground/30" />
+              </div>
+              <p className="text-muted-foreground text-sm font-medium">
                 Nenhuma venda registrada em {formatMesAno(mes)}
               </p>
             </CardContent>
@@ -426,25 +461,27 @@ export default function DashboardPage() {
 
       {/* ── Alertas ── */}
       {totalAlertas > 0 && (
-        <Card className="border-warning/30 bg-warning/5">
+        <Card className="border-warning/20 bg-warning/5">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2 text-warning-foreground">
-              <AlertTriangle className="w-4 h-4 text-warning" />
+            <CardTitle className="text-sm font-bold flex items-center gap-2.5 text-warning-foreground">
+              <div className="icon-circle-sm bg-warning/15">
+                <AlertTriangle className="w-4 h-4 text-warning" />
+              </div>
               Alertas ({totalAlertas})
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-5">
             {/* Estoque baixo */}
             {data?.alertas.estoqueBaixo && data.alertas.estoqueBaixo.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
                   <Package className="w-3.5 h-3.5" />
                   Estoque Baixo ({data.alertas.estoqueBaixo.length})
                 </p>
-                <div className="space-y-1">
+                <div className="space-y-2">
                   {data.alertas.estoqueBaixo.map((ing) => (
-                    <div key={ing.id} className="flex items-center justify-between text-sm">
-                      <span className="text-foreground">{ing.nome}</span>
+                    <div key={ing.id} className="flex items-center justify-between text-sm bg-background/60 rounded-xl px-3 py-2">
+                      <span className="text-foreground font-medium">{ing.nome}</span>
                       <Badge variant="destructive" className="text-xs">
                         {ing.estoqueAtual}{ing.unidadeMedida} / mín {ing.estoqueMinimo}{ing.unidadeMedida}
                       </Badge>
@@ -457,14 +494,14 @@ export default function DashboardPage() {
             {/* Produtos vencendo */}
             {data?.alertas.produtosVencendo && data.alertas.produtosVencendo.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5" />
                   Cookies Vencendo em 3 dias ({data.alertas.produtosVencendo.length})
                 </p>
-                <div className="space-y-1">
+                <div className="space-y-2">
                   {data.alertas.produtosVencendo.map((prod) => (
-                    <div key={prod.id} className="flex items-center justify-between text-sm">
-                      <span className="text-foreground">{prod.receita.nome}</span>
+                    <div key={prod.id} className="flex items-center justify-between text-sm bg-background/60 rounded-xl px-3 py-2">
+                      <span className="text-foreground font-medium">{prod.receita.nome}</span>
                       <div className="flex items-center gap-2">
                         <span className="text-muted-foreground text-xs">Lote: {prod.lote}</span>
                         <Badge variant="outline" className="text-xs border-warning text-warning-foreground">
@@ -480,14 +517,14 @@ export default function DashboardPage() {
             {/* Ingredientes vencendo */}
             {data?.alertas.ingredientesVencendo && data.alertas.ingredientesVencendo.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1">
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5" />
                   Ingredientes Vencendo em 7 dias ({data.alertas.ingredientesVencendo.length})
                 </p>
-                <div className="space-y-1">
+                <div className="space-y-2">
                   {data.alertas.ingredientesVencendo.map((comp) => (
-                    <div key={comp.id} className="flex items-center justify-between text-sm">
-                      <span className="text-foreground">{comp.ingrediente.nome}</span>
+                    <div key={comp.id} className="flex items-center justify-between text-sm bg-background/60 rounded-xl px-3 py-2">
+                      <span className="text-foreground font-medium">{comp.ingrediente.nome}</span>
                       <Badge variant="outline" className="text-xs border-warning text-warning-foreground">
                         {formatDate(comp.validade)}
                       </Badge>
@@ -504,8 +541,10 @@ export default function DashboardPage() {
       {!data && !loading && (
         <Card>
           <CardContent className="flex flex-col items-center justify-center h-48 text-center">
-            <Cookie className="w-12 h-12 text-muted-foreground/30 mb-3" />
-            <p className="text-muted-foreground">
+            <div className="icon-circle bg-muted mb-3">
+              <Cookie className="w-6 h-6 text-muted-foreground/30" />
+            </div>
+            <p className="text-muted-foreground font-medium">
               Nenhum dado disponível ainda. Comece cadastrando ingredientes e receitas.
             </p>
           </CardContent>
